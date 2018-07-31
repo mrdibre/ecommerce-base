@@ -1,0 +1,26 @@
+{
+  "name": "udipop",
+  "type": "project",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Mr. Dibre",
+      "email": "cfrdesenvolvimento@gmail.com"
+    }
+  ],
+  "require": {
+    "php": ">=7.0",
+    "an8val66/phalconit": "dev-master",
+    "pagseguro/pagseguro-php-sdk": "^4.2",
+    "flyingluscas/correios-php": "^2.3",
+    "phpmailer/phpmailer": "^6.0"
+  },
+  "require-dev": {
+    "phalcon/incubator": "^3.3"
+  },
+  "autoload": {
+    "psr-4": {
+      "Ecommerce\\": "ecommerce"
+    }
+  }
+}

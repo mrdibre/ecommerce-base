@@ -1,0 +1,3 @@
+<div>
+    <?= $this->getContent() ?>
+</div>
