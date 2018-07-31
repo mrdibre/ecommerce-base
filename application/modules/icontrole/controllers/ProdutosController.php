@@ -67,17 +67,28 @@ class ProdutosController extends BaseController{
 
         }
 
-        print_r($this->request->getUploadedFiles());
-        echo "<br><br>";
-        print_r($images);
-        print_r([$images]);
-        print_r((array)$images);
-        die();
-
         /**
          * @var Produtos $model;
          */
         $model = Produtos::findById($produto->_id->{'$oid'});
+
+        $imgs = $model->getImagens();
+
+        $oldimgs = [];
+
+        foreach ($produto->imagens as $imagem){
+            if( gettype($imagem) === "string" ){
+                $oldimgs[] = $imagem;
+            }
+        }
+
+        $diff = array_diff($imgs,$oldimgs);
+
+        if( count($diff) > 0 ){
+            foreach ($diff as $key => $item){
+                unset($imgs[$key]);
+            }
+        }
 
         $model->setNome($produto->nome);
         $model->setAtivo( $produto->ativo);
@@ -95,10 +106,10 @@ class ProdutosController extends BaseController{
         $model->setImagens($produto->imagens);
         $model->setDepartamento($produto->departamento);
         $model->setTags($produto->tags);
-        $model->setVariacoes($produto->variacoes);
+        $model->setVariacoes( (array) $produto->variacoes);
         $model->setVinculados($produto->vinculados);
-        $model->setFichatecnica($produto->fichatecnica);
-        $model->setImagens( $images );
+        $model->setFichatecnica( (array) $produto->fichatecnica);
+        $model->setImagens( array_merge($imgs,$images) );
 
         if($model->save()) {
             die(
@@ -119,6 +130,114 @@ class ProdutosController extends BaseController{
             )
             );
         }
+
+    }
+
+    public function importAction(){
+
+        $count = 1;
+        $this->view->disable();
+
+        $continue = true;
+
+        echo "<pre>";
+
+        while($continue) {
+
+            try {
+                $produtos = (json_decode($this->bling->getProdutos($count)))->retorno->produtos;
+
+                if( (gettype($produtos) === "array") && ( count($produtos) > 0 ) ){
+                    foreach ($produtos as $produto) {
+                        $produto = $produto->produto;
+
+
+                        $productInDb = Produtos::find(
+                            [
+                                [
+                                    "nome" => $produto->descricao
+                                ]
+                            ]
+                        );
+
+                        if (isset($productInDb[0]) && ($productInDb[0]->nome === $produto->descricao)) {
+
+                            /**
+                             * @var Produtos $model
+                             */
+                            $model = $productInDb[0];
+                            $model->setPreco((float)number_format($produto->preco, 2, '.', ''));
+                            $model->setDescricao($produto->descricaoCurta);
+                            $model->setEstoque($produto->estoqueAtual);
+                            $model->setDimensoes([
+                                "largura" => $produto->larguraProduto,
+                                "altura" => $produto->alturaProduto,
+                                "comprimento" => $produto->profundidadeProduto
+                            ]);
+                            $model->setPeso($produto->pesoBruto);
+                            $model->setMarca($produto->marca);
+
+                            if($model->save()){
+                                echo "imported<br>";
+                            }
+                            else{
+                                $continue = false;
+                            }
+
+                            unset($model);
+
+                        } else {
+
+                            //Produto não existe
+
+                            $model = new Produtos();
+                            $model->setNome($produto->descricao);
+                            $model->setAtivo(false);
+                            $model->setPreco((float)number_format($produto->preco, 2, '.', ''));
+                            $model->setDescricao($produto->descricaoCurta);
+                            $model->setEstoque($produto->estoqueAtual);
+                            $model->setAvaliacao(0);
+                            $model->setDimensoes([
+                                "largura" => $produto->larguraProduto,
+                                "altura" => $produto->alturaProduto,
+                                "comprimento" => $produto->profundidadeProduto
+                            ]);
+                            $model->setPeso($produto->pesoBruto);
+                            $model->setMarca($produto->marca);
+                            $model->setImagens($produto->imagem);
+                            $model->setDepartamento(new \stdClass());
+                            $model->setTags([]);
+                            $model->setVariacoes([]);
+                            $model->setVinculados(new \stdClass());
+                            $model->setFichatecnica([]);
+
+                            if($model->create()){
+                                echo "created<br>";
+                            }
+                            else{
+                                $continue = false;
+                            }
+
+                            unset($model);
+
+                        }
+
+                    }
+                }
+                else{
+                    $continue = false;
+                }
+
+            } catch (\Exception $e) {
+                $continue = false;
+            }
+
+            $count++;
+
+        }
+
+        echo "Finalizado";
+        die();
 
     }
 
